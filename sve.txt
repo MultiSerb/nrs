@@ -1,0 +1,247 @@
+int oldState, oldTime;
+
+int analogInPin = A0;
+int PIN_LD1 = 26;
+int PIN_BTN1 = 4;
+int PIN_SW1 = 2;
+int INT_SW1 = 1;
+int br, dugme_id;
+
+void prikazi(){
+   int sensorValue = analogRead(analogInPin);
+   int outputValue = map(sensorValue, 0, 1023, 0, 255);
+   for(int i=26; i<34; i++){
+      digitalWrite(i, outputValue%2);
+      outputValue = outputValue/2;
+   }
+}
+
+void dugme(int id, void * tptr)
+{
+    int newState = digitalRead(PIN_BTN1);
+	if (oldState == 1  && newState == 0) {
+        if (millis()-oldTime>=2000) {
+            int sensorValue = analogRead(analogInPin);
+            br = br+sensorValue;
+            Serial.println(br);
+		}
+	} else if (oldState == 0 && newState ==1) {
+        oldTime = millis();
+	}
+	oldState = newState;
+}
+
+void obrisiInterrupt(int id, void * tptr)
+{
+   if (Serial.available()){
+      char *s = Serial.readString();
+      // na plocici pisati
+      //const char* s = Serial.readString().c_str();
+      int x = atoi(s);
+      if (x<br) {
+        setTaskState(dugme_id, TASK_DISABLE);
+        Serial.println("Task onemogucen");
+      } else
+        Serial.println("Task nije onemogucen");
+   }
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  for(int i = 0; i<8; i++)
+    pinMode(PIN_LD1+i, OUTPUT);
+  br = 0;
+  oldTime = millis();
+  dugme_id = createTask(dugme, 50, TASK_ENABLE, NULL);
+  attachInterrupt(INT_SW1, prikazi,RISING);
+  createTask(obrisiInterrupt, 50, TASK_ENABLE, NULL);
+}
+
+void loop()
+{
+
+}
+int oldState;
+
+int PIN_LD1 = 26;
+int PIN_BTN1 = 4;
+int PIN_SW1 = 2;
+int INT_SW1 = 1;
+int br, lampica_id;
+
+void interruptOff();
+
+void interruptOn(){
+   br++;
+   if (br>10) br = 1;
+   detachInterrupt(INT_SW1);
+   attachInterrupt(INT_SW1, interruptOff, RISING);
+}
+void interruptOff(){
+   br++;
+   if (br>10) br = 1;
+   detachInterrupt(INT_SW1);
+   attachInterrupt(INT_SW1, interruptOn, FALLING);
+}
+
+void lampica(int id, void * tptr)
+{
+   digitalWrite(PIN_LD1, !digitalRead(PIN_LD1));
+}
+
+void dugme(int id, void * tptr)
+{
+    int newState = digitalRead(PIN_BTN1);
+	if (oldState == 1  && newState == 0) {
+        Serial.print("Period: ");
+        Serial.println(1000/br);
+	} else if (oldState == 0 && newState ==1) {
+        setTaskPeriod(lampica_id, 1000/(2*br));
+	}
+	oldState = newState;
+}
+
+void serijskiMonitor(int id, void * tptr)
+{
+    if (Serial.available()){
+        char c = Serial.read();
+        if ('0'<=c && c<='9') {
+            br = c-'0'+1;
+            setTaskPeriod(lampica_id, 1000/(2*br));
+        }
+    }
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  pinMode(PIN_LD1, OUTPUT);
+  br = 1;
+  if (digitalRead(PIN_SW1))
+    attachInterrupt(INT_SW1, interruptOn, FALLING);
+  else
+    attachInterrupt(INT_SW1, interruptOff, RISING);
+  lampica_id = createTask(lampica, 1000/(2*br), TASK_ENABLE, NULL);
+  createTask(dugme, 50, TASK_ENABLE, NULL);
+  createTask(serijskiMonitor, 50, TASK_ENABLE, NULL);
+}
+
+void loop()
+{
+
+}
+void ispis(int id, void*tptr) {//cita br i pretvara ga u binarni i ispise
+   if (Serial.available()) {
+       char c = Serial.read();
+       if ('0'<=c && c<='9') {
+            Serial.println(c);
+            c = c-'0';
+            char s[5];
+            itoa(c,s,2);
+            Serial.println(s);
+            int i, len = strlen(s);
+            for(i=0; i<len; i++)
+                if (s[i]=='1')
+                   digitalWrite(25+len-i, HIGH);
+                else
+                   digitalWrite(25+len-i, LOW);
+            for(i=len; i<4; i++) {
+                digitalWrite(26+i, LOW);
+            }
+       }
+   }
+}
+
+void bin_to_dec(int id, void* tptr){
+    int num;
+    num  = digitalRead(SW1);
+    num += digitalRead(SW2)*2;
+    num += digitalRead(SW3)*4;
+    num += digitalRead(SW4)*8;
+
+    Serial.print("num=");
+    Serial.println(num);
+}
+
+#define BTN1 4
+#define BTN2 34
+#define LED2 27
+
+typedef void (*fptr)();
+
+typedef struct{
+    int btn_pin;
+    int btn_new_state;
+    int btn_old_state;
+    fptr rising_f;
+    fptr falling_f;
+    int interruptEnable;
+}BTN;
+
+BTN btn1, btn2;
+
+void attachInterrupt(BTN *btn, fptr f, int mode){
+    if(mode == RISING)
+        btn->rising_f = f;
+    else
+        btn->falling_f = f;
+}
+
+void btn1_rising(){
+    digitalWrite(LED2, HIGH);
+}
+
+void btn1_falling(){
+    digitalWrite(LED2, LOW);
+}
+
+void btn2_rising(){
+    btn1.interruptEnable = !btn1.interruptEnable;
+}
+
+void btn2_falling(){
+    btn1.interruptEnable = true;
+}
+
+void button_task(int id, void* tptr){
+    BTN *b = (BTN*)tptr;
+    if(b->interruptEnable){
+        b->btn_new_state = digitalRead(b->btn_pin);
+        if(b->btn_old_state==0 && b->btn_new_state==1){
+            if(b->rising_f != NULL) (b->rising_f)();
+        }
+        else
+            if(b->btn_old_state==1 && b->btn_new_state==0)
+                if(b->falling_f != NULL) (b->falling_f)();
+    }
+    b->btn_old_state = b->btn_new_state;
+}
+
+void setup() {
+    pinMode(BTN1, INPUT);
+    pinMode(LED2, OUTPUT);
+
+    btn1.btn_pin = BTN1;
+    btn1.btn_old_state = digitalRead(BTN1);
+    btn1.rising_f = NULL;
+    btn1.falling_f = NULL;
+    btn1.interruptEnable = true;
+    attachInterrupt(&btn1, btn1_rising, RISING);
+    attachInterrupt(&btn1, btn1_falling, FALLING);
+
+    btn2.btn_pin = BTN2;
+    btn2.btn_old_state = digitalRead(BTN2);
+    btn2.rising_f = NULL;
+    btn2.falling_f = NULL;
+    btn2.interruptEnable = true;
+    attachInterrupt(&btn2, btn2_rising, RISING);
+    attachInterrupt(&btn2, btn2_falling, FALLING);
+
+    createTask(button_task, 50, TASK_ENABLE, &btn1);
+    createTask(button_task, 50, TASK_ENABLE, &btn2);
+}
+
+void loop() {
+
+}

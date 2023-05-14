@@ -1,0 +1,73 @@
+#define dump(v) Serial.println(v) 
+
+#define LED_1 26
+#define LED_NUM 8 definisanje konstanti  i rename fje
+
+
+Serial.begin(9600); // 9600 bps
+Serial.println(vrednost) - ispisuje vrednost na serijski monitor
+
+pinMode(pin, mode); – postavlja određeni pin na  određeni mod (INPUT, OUTPUT, INPUT_PULLUP)
+digitalWrite(pin, vrednost); – postavlja određeni pin na određenu vrednost (LOW, HIGH)
+digitalRead(pin) – čita vrednost pina. Vraća LOW ili HIGH
+delay(ms) – zaustavlja proces na određeni broj milisekundi
+random()ako jedan parmetar do tog broja ,ako 2 izmedju
+ createTask(blink_task1, 1000, TASK_ENABLE, &pins[0]);//*((int*)tptr))pristupanje tom parametru
+destroyTask(int id) – uništava task sa rednim brojem id
+ getTaskId(taskFunc task) – vraća id prvog taska za neku funkciju
+ getTaskNextExec(int id) – vraća vreme sledećeg izvršavanja zadatka sa datim id
+ getTaskPeriod(int id) - vraća period izvršavanja zadatka sa datim id
+ getTaskState(int id) - vraća stanje zadatka sa datim id
+ getTaskVar(int id) - vraća parametar zadatka sa datim id
+ setTaskPeriod(int id, unsigned long period) – postavlja period za task sa datim id-em
+ setTaskState(int id, unsigned short state) - postavlja stanje za task sa datim id-em
+ setTaskVar(int id, void * var) – postavlja vrednosti parametara za task sa datim id-em
+ startTaskAt(int id, unsigned long start, unsigned short state) – postavlja vreme 
+startovanja za task sa određenim id-em, kao i početno stanje
+ static int startTime = millis();
+executeSoftReset(RUN_SKETCH_ON_BOOT);//RUN_SKETCH_ON_BOOT, ENTER_BOOTLOADER_ON_BOOT
+int pins[] = {SW1, LED1, SW2, LED2, SW3, LED3, SW4, LED4}; niz
+typedef void (*interruptFunc)(); 
+(*BTN2_f_rising)();
+
+digitalPinToInterrupt(pin)
+attachInterrupt(intNum, func, mode) – povezuje pin za eksterni prekid sa korisničkom funkcijom. Mod može biti RISING ili FALLING
+detachInterrupt(intNum) – uklanja korisničku funkciju za eksterni prekid
+ enableInterrupts() – omogućuje korišćenje prekida
+disableInterrupts() - onemogućava korišćenje prekida
+ restoreIntEnable(irq, st) – vraća staru vrednost flega za omogućavanje prekida
+ restoreInterrupts(st) – vraća staru vrednost svih flegova za omogućavanje prekida
+ setIntVector(vector, func) – postavlja funkciju za odredjeni vektor prekida. Vraća pokazivač na prethodnu funkciju
+ clearIntVector(vector) – briše funkciju za određeni vektor i vraća pokazivač na nju
+ clearIntFlag(irq) – briše oznaku da se desio prekid
+ setIntEnable(irq) – omogućuje određeni prekid
+ clearIntEnable(irq) - onemogućuje određeni prekid
+ getIntFlag(irq) – vraća trenutno stanje flega za omogućavanje prekida
+ getIntPriority(vec, *ipl, *spl) - vraća nivo i podnivo prioritet prekida
+ getIntVector(vec) – vraća pokazivač na funkciju za obradu datog prekida
+ setIntPriority(vec, ipl, spl) – postavlja nivo i podnivo prioriteta za određeni prekid
+
+const int analogInPin = A0;
+const int analogOutPin = 33;
+ int sensorValue = analogRead(analogInPin);  vraća vrednost analognog ulaza iz intervala [0..1023]
+  int outputValue = map(sensorValue, 0, 1023, 0, 255); skalira vrednost val iz intervala [p1, k1] na interval [p2, k2]
+  analogWrite(analogOutPin, outputValue);– postavlja vrednost na analogni izlaz na vrednost val iz 
+intervala [0..255]. Ukoliko je izlaz digitalni, tada za vrednosti 0..127 postavlja 
+LOW, a za vrednosti 128-255 na HIGH
+
+Serial.begin(brzina) – inicijalizuje serijski monitor na određenu brzinu 
+komunikacije, najčešće 9600 bps
+ Serial.available() – vraća broj raspoloživih bajtova za čitanje, učitanih u bafer. Ako nema učitanih karaktera, vraća 0.
+Serial.write(char) - ispisuje jedan karakter na serijski monitor
+ Serial.print(vrednost) - ispisuje vrednost na serijski monitor
+ Serial.println(vrednost) - ispisuje vrednost na serijski monitor i prelazi u novi red
+ Serial.read() – vraća učitani karakter, tj. njegov ascii kod
+ Serial.readString() – vraća niz karaktera sa serijskog monitora
+int atoi(char *str) – konvertuje string u broj, ukoliko je moguće. Ako nije, vraća vrednost 0
+char* itoa(int x, char *str, int base) – konvertuje broj u string u datoj osnovi
+
+
+
+ 
+
+
