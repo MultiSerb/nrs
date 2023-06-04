@@ -1,0 +1,294 @@
+
+extern serial Serial;
+ 
+const int pin = 33;
+int oldState,
+    startTime,
+    elapsedTime = 0,
+    periodTime = 0,
+    iteration  = 0,
+    jumps[100],
+    maxJump;
+ 
+void resetIterations(){
+    iteration = 0,
+    maxJump   = 0;
+    for(int i = 0; i < 100; ++i){
+        jumps[i] = 0;
+    }
+}
+ 
+void tracking(int id, void* ptrt){
+    static int first = true;
+    int newState = digitalRead(pin);
+    if(oldState > newState){
+        elapsedTime = millis() - startTime;
+    }else if(oldState < newState){
+        int time = millis();
+        periodTime = time - startTime;
+        startTime = time;
+        if(!first){
+            Serial.print('(');
+            Serial.print(iteration + 1);
+            Serial.print(".) ");
+            Serial.print(elapsedTime);
+            Serial.print(' ');
+            Serial.println(periodTime);
+            int humidity = map(elapsedTime, 0, 1500, 0, 100);
+            if(iteration == 0){
+                jumps[iteration++] = humidity;
+            }else if(iteration < 100){
+                jumps[iteration++] = humidity;
+                int jump = abs(jumps[iteration - 1] - jumps[iteration - 2]);
+                if(jump > maxJump){
+                    maxJump = jump;
+                }
+                if(jump > 15){ //mogu da napisem 15 jer je raspon od 0 do 100 isto kao i procenti
+                    Serial.print("[BIG-JUMP] There was a big diff. ");
+                    Serial.print(jump);
+                    Serial.println(" [%]");
+                }
+            }else{
+                //druga tacka
+                int errCnt = 0;
+                for(int i = 1; i < 99; ++i){
+                    if( (abs(jumps[i] - jumps[i - 1]) > 20 &&
+                       abs(jumps[i] - jumps[i + 1]) > 20) ||
+                       (abs(jumps[i] - jumps[i - 1]) < 20 &&
+                            abs(jumps[i] - jumps[i + 1]) < 20)){
+                        Serial.print("[ERROR nm. ");
+                        Serial.print(++errCnt);
+                        Serial.print("] Approx: ");
+                        Serial.println((jumps[i + 1] + jumps[i - 1]) / 2);
+                        delay(50);
+                   }
+                }
+                //prva tacka
+                Serial.print("[BIGGEST-JUMP] Biggest diff. was ");
+                Serial.println(maxJump);
+                resetIterations();
+            }
+        }else{
+            first = false;
+        }
+    }
+    oldState = newState;
+}
+ 
+void setup()
+{
+    Serial.begin(9600);
+    oldState = digitalRead(pin);
+    startTime = millis();
+    resetIterations();
+    pwmSin(33, 1500, 0.1);
+    createTask(tracking, 1, TASK_ENABLE, NULL);
+}
+
+const int pin          = 26,
+          measureCount = 20;
+int oldState,
+    startTime,
+    elapsedTime = 0,
+    periodTime  = 0,
+    tempSum     = 0,
+    tempCnt     = 0,
+    lastAvrg    = -1;
+ 
+void tracking(int id, void* ptrt){
+    static int first = true;
+    bool error = false;
+    int newState = digitalRead(pin);
+    if(oldState > newState){
+        elapsedTime = millis() - startTime;
+    }else if(oldState < newState){
+        int timeLocal   = millis();
+        periodTime = timeLocal - startTime;
+        startTime  = timeLocal;
+        if(!first){
+            Serial.print("(");
+            Serial.print(tempCnt + 1);
+            Serial.print(".) ");
+            Serial.print(elapsedTime);
+            Serial.print(' ');
+            Serial.println(periodTime);
+            int temperature = map(elapsedTime, 0, 1000, 0, 45);
+            if(lastAvrg != -1){
+                if((temperature > (lastAvrg + (lastAvrg / 2))) ||
+                    (temperature < (lastAvrg - (lastAvrg / 2)))){
+                    time_t now = time(0);
+                    char* date = ctime(&now);
+                    Serial.print("[ERROR] Temperature is 50% diff from last avrg (");
+                    Serial.print(temperature);
+                    Serial.print(") [");
+                    Serial.print(date);
+                    Serial.println("]");
+                    error = true;
+                }
+            }
+            if(!error){
+                tempSum += temperature;
+            }else{
+                tempSum += lastAvrg;
+            }
+            if(tempCnt++ == 19){
+                int avrg = tempSum / measureCount;
+                tempCnt = 0;
+                Serial.print("[AVERAGE] Average temperature last 20 measurings is ");
+                Serial.println(avrg);
+                if(lastAvrg == avrg){
+                    Serial.println("[INFO] This average is the same as the one before.");
+                }
+                lastAvrg = avrg;
+                tempSum = 0;
+                tempCnt = 0;
+            }
+        }else{
+            first = false;
+        }
+    }
+    oldState = newState;
+}
+ 
+void setup()
+{
+    Serial.begin(9600);
+    oldState = digitalRead(pin);
+    startTime = millis();
+    pwmSin(pin, 1000, 0.1);
+    createTask(tracking, 1, TASK_ENABLE, NULL);
+}
+
+
+
+int myPIN = 26;
+int oldState, periodTime, startTime, elapsedTime;
+
+#define numOfLastValues 20
+int numOfValues;
+int values[numOfLastValues];
+int brPojavljivanja[41];
+int numOfErrors;
+int suma = 0;
+int suma20 = 0;
+
+void brojevi(int id, void * tptr)
+{
+    // promenljiva za preskakanje prvog intervala, koji nije potpun :)
+    static int first = true;
+    int newState = digitalRead(myPIN);
+	if (oldState == 1  && newState == 0) {
+        elapsedTime = millis()-startTime;
+	} else if (oldState == 0 && newState ==1) {
+        int time = millis();
+        periodTime = time-startTime;
+        startTime = time;
+        if (!first) {
+           Serial.print(elapsedTime);
+           Serial.print(' ');
+           Serial.println(periodTime);
+           int temperatura = map(elapsedTime, 0, 2000, 0, 40);
+           suma20 = suma20- values[numOfValues%numOfLastValues] + temperatura;
+           values[numOfValues%numOfLastValues] = temperatura;
+           suma = suma+temperatura;
+           brPojavljivanja[temperatura]++;
+           numOfValues++;
+           Serial.print("Prosecna temperatura: ");
+           Serial.println(suma/numOfValues);
+           if (numOfValues>=numOfLastValues) {
+                Serial.print("Prosecna temperatura poslednjih 20 merenja: ");
+                Serial.println(suma20/numOfLastValues);
+           }
+           if (numOfValues%numOfLastValues==0) {
+              int maxJ = 0;
+              for(int j=1; j<=40; j++)
+                if (brPojavljivanja[j]>brPojavljivanja[maxJ])
+                    maxJ = j;
+              Serial.print("Najcesca temperatura: ");
+              Serial.println(maxJ);
+           }
+        }
+        first = false;
+	}
+	oldState = newState;
+}
+
+void setup()
+{
+  Serial.begin(9600);
+  pwmSin(myPIN, 2000, 0.0);
+  oldState = digitalRead(myPIN);
+  startTime = millis();
+  elapsedTime = 0;
+  periodTime = 0;
+  numOfValues = 0;
+  for(int i=0; i<numOfLastValues; i++)
+    values[i] = 0;
+  for(int i=0; i<=40; i++)
+    brPojavljivanja[i] = 0;
+  createTask(brojevi, 1, TASK_ENABLE, NULL);
+}
+
+
+extern serial Serial;
+
+#define maxBrVrednosti 30
+#define maxBrUredjaja 21
+int brojVrednosti = 0;
+short napon[maxBrUredjaja];
+short brUpozorenja[maxBrUredjaja];
+
+void brojevi(int id, void *tptr)
+{
+    if(available())
+    {
+        char *buffer = readAll();
+        int velicina = *((int *) buffer);
+        for(int i=0; i<velicina; i++)
+        {
+            int brUredjaja = *(int*)(buffer + sizeof(int) + i * slogSize() + 32);
+            int izmereniNapon = *(short*)(buffer + sizeof(int) + i * slogSize() + 36);
+            int izmerenaJacina = *(short*)(buffer + sizeof(int) + i * slogSize() + 38);
+            Serial.print(brUredjaja);
+            Serial.print(" ");
+            Serial.print(izmereniNapon);
+            Serial.print(" ");
+            Serial.println(izmerenaJacina);
+            brojVrednosti++;
+            if (abs(izmereniNapon-napon[brUredjaja])>30 && napon[brUredjaja]!=0) {
+                brUpozorenja[brUredjaja]++;
+                Serial.print("Upozorenje, neodgovarajuc napon na uredjaju broj: ");
+                Serial.println(brUredjaja);
+            }
+            napon[brUredjaja] = izmereniNapon;
+
+            if (brojVrednosti%maxBrVrednosti==0) {
+                int maxJ = 0;
+                for (int j=1; j<brUredjaja; j++)
+                    if (brUpozorenja[maxJ]<brUpozorenja[j])
+                        maxJ = j;
+                Serial.print("Najvise upozorenja je na uredjaju broj: ");
+                Serial.println(maxJ);
+            }
+        }
+        delete[] buffer;
+    }
+}
+
+void setup()
+{
+    Serial.begin(9600);
+    for (int i = 0; i<maxBrUredjaja; i++) {
+        napon[i] = 0;
+        brUpozorenja[i] = 0;
+    }
+    brojVrednosti = 0;
+
+    startStopDataGeneration(START_GENERATION, RANDOM, 0, 20, 0.0, 1000);
+
+    createTask(brojevi, 1000, TASK_ENABLE,  NULL);
+}
+
+
+
+
