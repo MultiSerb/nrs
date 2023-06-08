@@ -1,0 +1,235 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include "ispit.h"
+#pragma pack(4)
+
+int konverzija(char *s){
+   int rez, i;
+   rez = 0;
+   i = 0;
+   while (s[i]!=0){
+     if (s[i]>='0'&&s[i]<='9')
+        rez = rez*16+s[i]-'0';
+     else if (s[i]>='A'&&s[i]<='F')
+        rez = rez*16+s[i]-'A'+10;
+     else if (s[i]>='a'&&s[i]<='f')
+        rez = rez*16+s[i]-'a'+10;
+     else
+        return -1;
+     i++;
+   }
+   return rez;
+}
+
+char* unos(){
+   int brPr, brSt, i, j;
+   int vel = sizeof(ispit);
+   printf("Unesite broj predmeta i broj studenata: ");
+   scanf("%d%d", &brPr, &brSt);
+   char* buffer = (char*) malloc(2*sizeof(int)+brPr*brSt*vel);
+   *((int*)buffer)= brSt;
+   *((int*)(buffer+4))= brPr;
+   printf("Unesite podatke o ispitima: \n");
+   char sifra[12];
+   int sifraInt;
+   for(j=0; j<brPr; j++)
+      for(i=0; i<brSt; i++){
+         printf("Unesite podatke o ispitu: \n");
+         scanf("%hd%hd%hd %c",
+               (short*)(buffer+vel*(j*brSt+i)+0+2*sizeof(int)),
+               (short*)(buffer+vel*(j*brSt+i)+2+2*sizeof(int)),
+               (short*)(buffer+vel*(j*brSt+i)+4+2*sizeof(int)),
+               (char*)(buffer+vel*(j*brSt+i)+6+2*sizeof(int)));
+         do {
+           scanf("%s", sifra);
+           sifraInt = konverzija(sifra);
+         } while(sifraInt==-1);
+
+         *((int*)(buffer+vel*(j*brSt+i)+8+2*sizeof(int))) = sifraInt;
+         scanf("%s", (char*)(buffer+vel*(j*brSt+i)+12+2*sizeof(int)));
+      }
+
+   return buffer;
+}
+
+typedef int funkcija(ispit);
+
+int fun(ispit isp) {
+   return isp.ocena>'5';
+}
+
+int prebroj(char* buffer, funkcija f) {
+  int brSt = *((int*) buffer);
+  int brPr = *((int*) (buffer+sizeof(int)));
+  ispit* is = (ispit*) (buffer+2*sizeof(int));
+  int i, j, br = 0;
+  for(j=0; j<brPr; j++)
+     for(i=0; i<brSt; i++)
+        if (f(is[j*brSt+i]))
+            br++;
+  return br;
+}
+
+int main()
+{
+    char* buffer = unos();
+    ispisPodatke(buffer);
+    int br = prebroj(buffer, fun);
+    printf("Broj ispita koji zadovoljavaju uslov: %d\n", br);
+    return 0;
+}
+
+
+void izracunaj(char *buffer){
+   int n = *((int*) buffer);
+   int i, rez, velicina = sizeof(izraz);
+   short br1, br2;
+   char op;
+   for(i=0; i<n; i++){
+       br1 = *((short*)(buffer+sizeof(int)+i*velicina));
+       op = *(buffer+sizeof(int)+i*velicina+2);
+       br2 = *((short*)(buffer+sizeof(int)+i*velicina+4));
+       if (op=='+')
+         rez = br1+br2;
+       else if (op=='-')
+         rez = br1-br2;
+       else if (op=='*')
+         rez = br1*br2;
+       else if (op=='/')
+         rez = br1/br2;
+       *((short*)(buffer+sizeof(int)+i*velicina+8)) = rez;
+   }
+};
+
+void copyLEToBE(int x, void* copy){
+   for(int i=0; i<sizeof(x); i++){
+      *((char*)copy+i) = *((char *)&x +sizeof(x)-1-i);
+   }
+}
+
+node* izdvoj(char *buffer){
+   int n = *((int*) buffer);
+   int i, rez, rezBE, velicina = sizeof(izraz);
+   node* l;
+   init(&l);
+   for(i=0; i<n; i++){
+       rez = *((short*)(buffer+sizeof(int)+i*velicina+8));
+       copyLEToBE(rez, &rezBE);
+       addEnd(&l, rezBE);
+   }
+   return l;
+};
+
+
+int main()
+{
+    char *buffer = napraviNiz();
+    ispisNiz(buffer);
+    izracunaj(buffer);
+    ispisNiz(buffer);
+    node *l = izdvoj(buffer);
+    node *temp = l->next;
+    int rezBE, rez;
+    printf("Rezultati izraza su: ");
+    while (temp!=l) {
+        rezBE = temp->data;
+        copyLEToBE(rezBE, &rez);
+        printf("%d ", rez);
+        temp = temp->next;
+    }
+    return 0;
+}
+
+
+
+char *p_ParametarFunkcije = (char*)malloc(sizeof(char)+2 * sizeof(int));//zauzimanje memorije za bafer
+int *operand = (int *)(p_ParametarFunkcije + sizeof(char));//pristupamo pok+1 i on se pomera za int kad ga povecavamo ko niz
+int n = *((int*) buffer);//vrednost
+printf("pisemo neki tekst %f ",nekifloat);
+scanf("%c", &operacija);//c-char,d-int,f-float,hu-short
+free(p_ParametarFunkcije);//oslobadjamo mem od maloca
+
+void copyToLE(unsigned x, void* copy){//copyToBE//ove f-je dele sa 100000000 stalno i tako dobija deo po deo broja po 4 cifre i uspisuje ga
+   for(int i=0; i<sizeof(x); i++){//lE je kad prvo upisujes  sa desne-levu  a Be sa leva-desna
+      *((char*)copy+i) = x%256;//copy+sizeof(x)-1-i ide od krja a ne do pocetka
+      x = x/256;
+   }
+}
+
+
+void copyLEToLE(unsigned x, void* copy){//samo prekucava redom brojeve a be menja prvo idu vise vaznosti pa manje....
+   for(int i=0; i<sizeof(x); i++){
+      *((char*)copy+i) = *((char *)&x +i);
+   }			//*((char *)&x +sizeof(x)-1-i);//za BE
+}
+
+do {scnaf}//da ispisuje sve dok ne unese dobro...
+while(uslov);
+
+char* konverzija(int n){//predstava preko binarnog broj->string
+   char s[33], *rez;
+   s[32] = 0;
+   int i = 31;
+   do { 
+     if (n%2==0)
+        s[i] = '0';
+     else
+        s[i] = '1';
+     i--;
+     n = n/2;
+   } while (n!=0);
+   rez = (char *) malloc(32-i);
+   memcpy(rez, &s[i+1], 32-i);
+   return rez;
+}
+int konverzija(char *s){//string->16 osnova
+   int rez, i;
+   rez = 0;
+   i = 0;
+   while (s[i]!=0){
+     if (s[i]>='0'&&s[i]<='9')
+        rez = rez*16+s[i]-'0';
+     else if (s[i]>='A'&&s[i]<='F')
+        rez = rez*16+s[i]-'A'+10;
+     else if (s[i]>='a'&&s[i]<='f')
+        rez = rez*16+s[i]-'a'+10;
+     else
+        return -1;
+     i++;
+   }
+   return rez;
+}
+
+
+
+#pragma pack(4)
+typedef struct {
+   char ime[12];
+   char prezime[12];
+   char pol;
+   short danR, mesecR, godinaR;
+   char JMBG[14];
+} Osoba;
+
+node *l;
+ init(&l);//inc istu
+  addEnd(l, st);//dodajemo neki el na kraj ovom slicaju strukturu
+node *t = l->next;
+    while (t!=l) {//ispis liste
+        printf("%s\n", t->data.ime);
+        printf("%s\n", t->data.prezime);
+        printf("%s\n", t->data.brIndeksa);
+        printf("%d\n", t->data.brIspita);
+        t = t->next;
+    }
+typedef int provera(int);//def pok na f-ju kako izgleda
+void bubbleSort(int a[], int n, poredjenje *uporedi) {
+   int i, j, t;
+   for (j=n-1; j>0; j--)
+      for (i=0; i<j; i++)
+        if ((*uporedi)(a[i+1], a[i])) {
+            t = a[i];
+            a[i] = a[i+1];
+            a[i+1] = t;
+        }
+}
